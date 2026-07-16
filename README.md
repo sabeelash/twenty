@@ -61,5 +61,8 @@ TWENTY_WORK_SECONDS=5 TWENTY_BREAK_SECONDS=5 ./build/Twenty.app/Contents/MacOS/T
 - `Sources/Twenty/BreakCardView.swift` — SwiftUI break card ("Look away." / countdown / Later / Skip)
 - `Sources/Twenty/StatusItemController.swift` — menu bar item and menu
 - `Sources/Twenty/SettingsView.swift` — SwiftUI settings form
+- `Assets/twenty-icon.icon` — app icon (Icon Composer file; compiled by `actool` during the app build)
+- `Assets/icon-glyph.svg`, `Assets/icon-background.svg` — icon layer sources
+- `Assets/wordmark-*.svg` — logo + wordmark used in this README
 - `Support/Info.plist` — bundle manifest (`LSUIElement` = menu bar only)
-- `Scripts/build-app.sh` — SwiftPM build + .app assembly + ad-hoc codesign
+- `Scripts/build-app.sh` — SwiftPM build + .app assembly + icon compile + ad-hoc codesign
