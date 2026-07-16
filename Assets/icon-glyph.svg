@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Horizon gaze mark, white on transparent, for Icon Composer (glyph layer).
+       Full-bleed 1024 canvas; the system applies the squircle mask.
+       All shapes are plain fills (the stroked arc is outlined as a filled
+       ring segment with round end caps) so importers can't misrender caps
+       or stroke widths. -->
+  <path fill="#ffffff" d="M 252.28 641.70
+    A 504.89 504.89 0 0 1 771.72 641.70
+    A 33.57 33.57 0 0 1 737.18 699.26
+    A 437.75 437.75 0 0 0 286.82 699.26
+    A 33.57 33.57 0 0 1 252.28 641.70
+    Z"/>
+  <circle cx="512" cy="409.4" r="89.52" fill="#ffffff"/>
+</svg>

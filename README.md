@@ -20,6 +20,10 @@ a full-screen blurred overlay reminds you to look away from the screen for 20 se
 open build/Twenty.app
 ```
 
+The app icon (`Assets/twenty-icon.icon`, an Icon Composer file) is compiled
+into the bundle when full Xcode 26 is installed; with Command Line Tools only,
+the build still works but skips the icon.
+
 The app lives entirely in the menu bar (no Dock icon). Look for the eye icon.
 
 ## Behavior
