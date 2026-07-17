@@ -54,7 +54,11 @@ struct SettingsView: View {
         VStack(spacing: 12) {
             HStack(spacing: 7) {
                 Spacer()
-                HorizonGazeMark(size: 17)
+                Image(nsImage: HorizonGazeIcon.image)
+                    .resizable()
+                    .renderingMode(.template)
+                    .foregroundStyle(.white)
+                    .frame(width: 17, height: 17)
                 Text("Twenty")
                     .font(.system(size: 19, weight: .semibold))
                     .tracking(-0.6)
@@ -198,35 +202,6 @@ struct SettingsView: View {
         @unknown default:
             return "Launch at login status is unavailable"
         }
-    }
-}
-
-/// The horizon gaze mark (pupil over a horizon arc) — same geometry as the
-/// menu bar icon in StatusItemController, in an 18×18 design space.
-private struct HorizonGazeMark: View {
-    let size: CGFloat
-
-    var body: some View {
-        Canvas { context, _ in
-            let s = size / 18
-
-            var arc = Path()
-            arc.move(to: CGPoint(x: 2.5 * s, y: 13 * s))
-            arc.addCurve(
-                to: CGPoint(x: 15.5 * s, y: 13 * s),
-                control1: CGPoint(x: 6.83 * s, y: 10.6 * s),
-                control2: CGPoint(x: 11.17 * s, y: 10.6 * s)
-            )
-            context.stroke(
-                arc,
-                with: .color(.white),
-                style: StrokeStyle(lineWidth: 1.8 * s, lineCap: .round)
-            )
-
-            let dot = CGRect(x: 6.6 * s, y: 3.6 * s, width: 4.8 * s, height: 4.8 * s)
-            context.fill(Path(ellipseIn: dot), with: .color(.white))
-        }
-        .frame(width: size, height: size)
     }
 }
 

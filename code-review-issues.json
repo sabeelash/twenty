@@ -64,49 +64,49 @@
       "title": "Menu status formatting unexpectedly mutates scheduler state",
       "severity": "low",
       "description": "BreakScheduler.menuStatusText starts a new work session when called while waiting for return. A formatting/query method should not perform a state transition. Move return detection to an explicit action and keep status formatting read-only.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Overlay window frame is set twice",
       "severity": "low",
       "description": "OverlayController initializes each window with screen.frame and then calls setFrame with the same frame. Remove the redundant setFrame call unless a documented AppKit behavior requires it.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Overlay window release configuration is unnecessary",
       "severity": "low",
       "description": "Overlay windows set isReleasedWhenClosed to false even though they are never closed; they are ordered out and released through the controller's array. Remove the setting to reduce irrelevant lifecycle configuration.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Secure restorable state callback appears unnecessary",
       "severity": "low",
       "description": "AppDelegate implements applicationSupportsSecureRestorableState even though the menu-bar app does not implement window restoration. Remove it unless restoration support is intentionally planned and tested.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Icon geometry has multiple sources of truth",
       "severity": "low",
       "description": "The horizon-gaze mark is independently encoded in AppKit drawing code, SwiftUI Canvas code, and SVG assets. These copies can drift. Prefer one reusable asset or shared geometry representation where practical.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "README understates the required SwiftPM version",
       "severity": "low",
       "description": "The README says Swift 6 is required, while Package.swift declares swift-tools-version 6.2. Update the documented requirement to Swift 6.2 or later.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Development environment overrides are incompletely documented",
       "severity": "low",
       "description": "TWENTY_IDLE_RESET_SECONDS and TWENTY_SNOOZE_SECONDS are supported in code but omitted from the README. Document all supported development overrides in one place.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Work interval override conflicts with live settings changes",
       "severity": "low",
       "description": "When TWENTY_WORK_SECONDS is active, changing the work interval setting causes BreakScheduler to recalculate the pending deadline in minutes, bypassing the development override. Either ignore settings changes while the override is active or consistently derive the recalculated interval through AppSettings.workInterval.",
-      "fixed": false
+      "fixed": true
     }
   ]
 }

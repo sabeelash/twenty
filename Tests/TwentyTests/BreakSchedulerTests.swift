@@ -57,6 +57,24 @@ final class BreakSchedulerTests: XCTestCase {
     }
 
     @MainActor
+    func testMenuStatusTextDoesNotResumeAnIdleSession() {
+        let harness = SchedulerHarness()
+        defer { harness.stop() }
+        let scheduler = harness.scheduler
+        harness.idleSeconds = 180
+        scheduler.workTimerElapsed()
+
+        XCTAssertEqual(scheduler.menuStatusText(), "Next Break Soon")
+        XCTAssertEqual(scheduler.state, .waitingForReturn)
+        XCTAssertNil(scheduler.nextBreakDate)
+
+        scheduler.userDidReturn()
+
+        XCTAssertEqual(scheduler.state, .working)
+        XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(AppSettings.workInterval))
+    }
+
+    @MainActor
     func testShortSleepPreservesThePendingBreakDeadline() throws {
         let harness = SchedulerHarness()
         defer { harness.stop() }
@@ -112,7 +130,7 @@ final class BreakSchedulerTests: XCTestCase {
 
         scheduler.settingsDidChange()
 
-        XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(30 * 60))
+        XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(AppSettings.workInterval))
     }
 
     @MainActor

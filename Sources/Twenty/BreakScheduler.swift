@@ -124,11 +124,6 @@ final class BreakScheduler: NSObject {
     }
 
     func menuStatusText() -> String {
-        // Opening the menu is user input; if we were waiting for the user to
-        // return from idle, they're back — start a fresh session now.
-        if state == .waitingForReturn {
-            scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
-        }
         switch state {
         case .paused:
             return "Reminders Paused"
@@ -206,8 +201,14 @@ final class BreakScheduler: NSObject {
     func idlePollElapsed() {
         guard state == .waitingForReturn else { return }
         if systemIdleSeconds() < idlePollInterval {
-            scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
+            userDidReturn()
         }
+    }
+
+    /// Handles direct user interaction while waiting for an idle break to end.
+    func userDidReturn() {
+        guard state == .waitingForReturn else { return }
+        scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
     }
 
     // MARK: - Break
@@ -326,7 +327,7 @@ final class BreakScheduler: NSObject {
         guard minutes > 0, minutes != lastKnownIntervalMinutes else { return }
         lastKnownIntervalMinutes = minutes
         guard state == .working, scheduledFullInterval else { return }
-        let newFireDate = sessionStart.addingTimeInterval(TimeInterval(minutes * 60))
+        let newFireDate = sessionStart.addingTimeInterval(AppSettings.workInterval)
         armWorkTimer(at: max(newFireDate, now().addingTimeInterval(2)))
     }
 }

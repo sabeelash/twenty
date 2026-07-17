@@ -150,7 +150,6 @@ final class OverlayController: NSObject, BreakOverlay {
             window.backgroundColor = .clear
             window.isMovable = false
             window.hidesOnDeactivate = false
-            window.isReleasedWhenClosed = false
             window.animationBehavior = .none
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 
@@ -170,7 +169,6 @@ final class OverlayController: NSObject, BreakOverlay {
             effectView.addSubview(hostingView)
 
             window.contentView = effectView
-            window.setFrame(screen.frame, display: true)
             return window
         }
     }
