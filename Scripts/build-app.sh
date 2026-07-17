@@ -16,7 +16,12 @@ cp "$BIN_PATH/Twenty" "$APP/Contents/MacOS/Twenty"
 cp "Support/Info.plist" "$APP/Contents/Info.plist"
 
 # App icon: compile the Icon Composer file (Liquid Glass layers + .icns
-# fallback). Skip gracefully when the selected developer tools do not include it.
+# fallback). actool ships with full Xcode only; if the selected developer
+# tools lack it (e.g. Command Line Tools), fall back to /Applications/Xcode.app.
+# Skip gracefully when no toolchain provides it.
+if ! xcrun --find actool > /dev/null 2>&1 && [[ -d "/Applications/Xcode.app" ]]; then
+  export DEVELOPER_DIR="/Applications/Xcode.app"
+fi
 if ACTOOL="$(xcrun --find actool 2>/dev/null)"; then
   ACTOOL_PARTIAL_PLIST="$APP/Contents/actool-partial.plist"
   "$ACTOOL" "Assets/twenty-icon.icon" \
