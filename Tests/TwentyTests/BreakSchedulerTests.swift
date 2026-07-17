@@ -40,6 +40,21 @@ final class BreakSchedulerTests: XCTestCase {
     }
 
     @MainActor
+    func testLaterDuringPausedManualBreakOverridesThePause() throws {
+        let harness = SchedulerHarness()
+        defer { harness.stop() }
+        let scheduler = harness.scheduler
+        scheduler.pauseReminders()
+        scheduler.takeBreakNow()
+        let breakOverlay = try XCTUnwrap(harness.overlay)
+
+        breakOverlay.finish(.later)
+
+        XCTAssertEqual(scheduler.state, .working)
+        XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(AppSettings.snoozeInterval))
+    }
+
+    @MainActor
     func testIdleReturnStartsANewWorkInterval() {
         let harness = SchedulerHarness()
         defer { harness.stop() }

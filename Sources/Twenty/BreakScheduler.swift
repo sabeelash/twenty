@@ -236,12 +236,9 @@ final class BreakScheduler: NSObject {
         returnToPausedAfterBreak = false
         switch outcome {
         case .later:
-            if returnToPaused {
-                state = .paused
-                nextBreakDate = nil
-            } else {
-                scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
-            }
+            // Asking for a break later is explicit intent — it overrides
+            // a pre-break pause.
+            scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
         case .skipped, .completed:
             if returnToPaused {
                 state = .paused
@@ -349,7 +346,7 @@ final class BreakScheduler: NSObject {
 
     func settingsDidChange() {
         let minutes = AppSettings.workIntervalMinutes
-        guard minutes > 0, minutes != lastKnownIntervalMinutes else { return }
+        guard minutes != lastKnownIntervalMinutes else { return }
         lastKnownIntervalMinutes = minutes
         guard state == .working, scheduledFullInterval else { return }
         let newFireDate = sessionStart.addingTimeInterval(AppSettings.workInterval)
