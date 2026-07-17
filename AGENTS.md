@@ -17,8 +17,10 @@ defines the menu-bar-only app; `Scripts/build-app.sh` assembles `build/Twenty.ap
 - `TWENTY_WORK_SECONDS=5 TWENTY_BREAK_SECONDS=5 ./build/Twenty.app/Contents/MacOS/Twenty`
   uses short intervals for manual timer testing.
 
-The package currently has no test target. Run `swift test` when adding one, and
-otherwise verify scheduling, snooze/skip, settings, idle detection, and wake
+Run the unit tests with `swift test`. XCTest ships with full Xcode only; if
+`xcode-select` points at the Command Line Tools, use
+`DEVELOPER_DIR=/Applications/Xcode.app swift test`. Scheduler and settings
+logic is covered in `Tests/TwentyTests/`; still verify overlay, menu, and wake
 behavior manually.
 
 ## Coding Style & Naming Conventions

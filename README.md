@@ -58,6 +58,10 @@ TWENTY_IDLE_RESET_SECONDS=5 \
 ./build/Twenty.app/Contents/MacOS/Twenty
 ```
 
+Run the unit tests with `swift test`. XCTest ships with full Xcode only; if
+`xcode-select` points at the Command Line Tools, use
+`DEVELOPER_DIR=/Applications/Xcode.app swift test`.
+
 ## Project layout
 
 - `Sources/Twenty/BreakScheduler.swift` — timing state machine (work → break → snooze, idle, sleep/wake)

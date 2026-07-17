@@ -150,6 +150,9 @@ final class OverlayController: NSObject, BreakOverlay {
             window.backgroundColor = .clear
             window.isMovable = false
             window.hidesOnDeactivate = false
+            // ARC owns these windows; opt out of AppKit's release-on-close so
+            // a future close() call can't over-release them.
+            window.isReleasedWhenClosed = false
             window.animationBehavior = .none
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 
