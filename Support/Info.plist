@@ -8,10 +8,6 @@
 	<string>Twenty</string>
 	<key>CFBundleExecutable</key>
 	<string>Twenty</string>
-	<key>CFBundleIconFile</key>
-	<string>twenty-icon</string>
-	<key>CFBundleIconName</key>
-	<string>twenty-icon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.sabeel.Twenty</string>
 	<key>CFBundleInfoDictionaryVersion</key>
