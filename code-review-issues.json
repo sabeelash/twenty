@@ -40,13 +40,13 @@
       "title": "Persisted settings are not validated or clamped",
       "severity": "medium",
       "description": "AppSettings trusts raw UserDefaults values even though values can come from old versions, command-line defaults changes, corruption, or future migrations. Zero or extreme values can trigger immediate repeated overlays or excessively long breaks. Centralize allowed ranges and clamp values when reading them.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Core scheduling state machine has no automated tests",
       "severity": "medium",
       "description": "The package has no test target, and BreakScheduler directly depends on Date, Timer, IdleMonitor, UserDefaults, workspace notifications, and the real overlay. Add small test seams and deterministic coverage for pause and resume, manual breaks, snooze, idle return, short and long sleep, session locking, settings changes, and overlay completion races.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Custom settings controls have insufficient accessibility metadata",

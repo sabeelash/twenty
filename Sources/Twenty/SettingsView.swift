@@ -46,9 +46,9 @@ final class LaunchAtLoginModel {
 struct SettingsView: View {
     let launchAtLogin: LaunchAtLoginModel
 
-    @AppStorage(AppSettings.workIntervalMinutesKey) private var workIntervalMinutes = 20
-    @AppStorage(AppSettings.breakDurationSecondsKey) private var breakDurationSeconds = 20
-    @AppStorage(AppSettings.snoozeMinutesKey) private var snoozeMinutes = 5
+    @AppStorage(AppSettings.workIntervalMinutesKey) private var workIntervalMinutes = AppSettings.defaultWorkIntervalMinutes
+    @AppStorage(AppSettings.breakDurationSecondsKey) private var breakDurationSeconds = AppSettings.defaultBreakDurationSeconds
+    @AppStorage(AppSettings.snoozeMinutesKey) private var snoozeMinutes = AppSettings.defaultSnoozeMinutes
 
     var body: some View {
         VStack(spacing: 12) {
@@ -70,7 +70,7 @@ struct SettingsView: View {
                     label: "BREAK",
                     caption: "Look 20 feet away",
                     value: $breakDurationSeconds,
-                    range: 10...60,
+                    range: AppSettings.breakDurationSecondsRange,
                     step: 5,
                     unit: "s"
                 )
@@ -78,7 +78,7 @@ struct SettingsView: View {
                     label: "SNOOZE",
                     caption: "When you press Later",
                     value: $snoozeMinutes,
-                    range: 1...30,
+                    range: AppSettings.snoozeMinutesRange,
                     step: 1,
                     unit: "m"
                 )
@@ -92,6 +92,11 @@ struct SettingsView: View {
         .padding(.bottom, 16)
         .frame(width: 400)
         .background(Color(red: 0.07, green: 0.075, blue: 0.09))
+        .onAppear {
+            workIntervalMinutes = AppSettings.workIntervalMinutes
+            breakDurationSeconds = AppSettings.breakDurationSeconds
+            snoozeMinutes = AppSettings.snoozeMinutes
+        }
     }
 
     private var workIntervalCard: some View {
@@ -112,7 +117,7 @@ struct SettingsView: View {
                     get: { Double(workIntervalMinutes) },
                     set: { workIntervalMinutes = Int($0) }
                 ),
-                in: 5...180,
+                in: Double(AppSettings.workIntervalMinutesRange.lowerBound)...Double(AppSettings.workIntervalMinutesRange.upperBound),
                 step: 5
             )
             .tint(.white)

@@ -9,7 +9,7 @@ final class OverlayWindow: NSWindow {
 /// Presents the full-screen break overlay on every connected display and
 /// drives the once-per-second countdown while it is visible.
 @MainActor
-final class OverlayController: NSObject {
+final class OverlayController: NSObject, BreakOverlay {
     enum Outcome {
         case completed
         case later

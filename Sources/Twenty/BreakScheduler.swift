@@ -1,11 +1,17 @@
 import AppKit
 
+@MainActor
+protocol BreakOverlay: AnyObject {
+    func present()
+    func cancelImmediately()
+}
+
 /// Owns all timing. One one-shot timer while working — no ticking, no polling.
 /// A lightweight poll runs only while the user is away from the machine, and a
 /// 1 Hz countdown timer runs only while the break overlay is on screen.
 @MainActor
 final class BreakScheduler: NSObject {
-    enum State {
+    enum State: Equatable {
         case working
         case waitingForReturn
         case onBreak
@@ -17,11 +23,14 @@ final class BreakScheduler: NSObject {
 
     private var workTimer: Timer?
     private var idlePollTimer: Timer?
-    private var overlay: OverlayController?
+    private var overlay: (any BreakOverlay)?
+    private let now: () -> Date
+    private let systemIdleSeconds: () -> TimeInterval
+    private let makeOverlay: (Int, @escaping (OverlayController.Outcome) -> Void) -> any BreakOverlay
 
     /// Start of the current work session; kept so an interval change in
     /// Settings adjusts the pending break instead of restarting from zero.
-    private var sessionStart = Date()
+    private var sessionStart: Date
     private var scheduledFullInterval = true
     private var lastKnownIntervalMinutes = 0
     private var awayBegan: Date?
@@ -29,6 +38,8 @@ final class BreakScheduler: NSObject {
     /// Set when a manual break is started while reminders are paused, so the
     /// pause survives the break instead of silently resuming the cycle.
     private var returnToPausedAfterBreak = false
+    private var nextBreakGeneration = 0
+    private var activeBreakGeneration: Int?
 
     /// Idle beyond this counts as an already-taken break; shorter gaps
     /// (reading, thinking) still count as work. `TWENTY_IDLE_RESET_SECONDS`
@@ -48,6 +59,20 @@ final class BreakScheduler: NSObject {
         formatter.dateStyle = .none
         return formatter
     }()
+
+    init(
+        now: @escaping () -> Date = Date.init,
+        systemIdleSeconds: @escaping () -> TimeInterval = IdleMonitor.systemIdleSeconds,
+        makeOverlay: @escaping (Int, @escaping (OverlayController.Outcome) -> Void) -> any BreakOverlay = { duration, onFinish in
+            OverlayController(duration: duration, onFinish: onFinish)
+        }
+    ) {
+        self.now = now
+        self.systemIdleSeconds = systemIdleSeconds
+        self.makeOverlay = makeOverlay
+        sessionStart = now()
+        super.init()
+    }
 
     func start() {
         lastKnownIntervalMinutes = AppSettings.workIntervalMinutes
@@ -122,9 +147,9 @@ final class BreakScheduler: NSObject {
     private func scheduleBreak(after interval: TimeInterval, fullInterval: Bool) {
         cancelTimers()
         state = .working
-        sessionStart = Date()
+        sessionStart = now()
         scheduledFullInterval = fullInterval
-        armWorkTimer(at: Date().addingTimeInterval(interval))
+        armWorkTimer(at: now().addingTimeInterval(interval))
     }
 
     private func armWorkTimer(at fireDate: Date) {
@@ -134,7 +159,7 @@ final class BreakScheduler: NSObject {
             fireAt: fireDate, interval: 0,
             target: self, selector: #selector(workTimerFired),
             userInfo: nil, repeats: false)
-        timer.tolerance = min(30, max(1, fireDate.timeIntervalSinceNow * 0.05))
+        timer.tolerance = min(30, max(1, fireDate.timeIntervalSince(now()) * 0.05))
         RunLoop.main.add(timer, forMode: .common)
         workTimer = timer
     }
@@ -147,8 +172,12 @@ final class BreakScheduler: NSObject {
     }
 
     @objc private func workTimerFired() {
+        workTimerElapsed()
+    }
+
+    func workTimerElapsed() {
         guard state == .working else { return }
-        if IdleMonitor.systemIdleSeconds() >= idleResetThreshold {
+        if systemIdleSeconds() >= idleResetThreshold {
             beginWaitingForReturn()
         } else {
             beginBreak()
@@ -171,8 +200,12 @@ final class BreakScheduler: NSObject {
     }
 
     @objc private func idlePollFired() {
+        idlePollElapsed()
+    }
+
+    func idlePollElapsed() {
         guard state == .waitingForReturn else { return }
-        if IdleMonitor.systemIdleSeconds() < idlePollInterval {
+        if systemIdleSeconds() < idlePollInterval {
             scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
         }
     }
@@ -183,45 +216,65 @@ final class BreakScheduler: NSObject {
         cancelTimers()
         state = .onBreak
         nextBreakDate = nil
-        let controller = OverlayController(duration: AppSettings.breakDurationSeconds) { [weak self] outcome in
-            guard let self else { return }
-            self.overlay = nil
-            let returnToPaused = self.returnToPausedAfterBreak
-            self.returnToPausedAfterBreak = false
-            switch outcome {
-            case .later:
-                if returnToPaused {
-                    self.state = .paused
-                    self.nextBreakDate = nil
-                } else {
-                    self.scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
-                }
-            case .skipped, .completed:
-                if returnToPaused {
-                    self.state = .paused
-                    self.nextBreakDate = nil
-                } else {
-                    self.scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
-                }
-            }
+        nextBreakGeneration += 1
+        let generation = nextBreakGeneration
+        activeBreakGeneration = generation
+        let controller = makeOverlay(AppSettings.breakDurationSeconds) { [weak self] outcome in
+            self?.finishBreak(outcome, generation: generation)
         }
         overlay = controller
         controller.present()
     }
 
+    private func finishBreak(_ outcome: OverlayController.Outcome, generation: Int) {
+        guard activeBreakGeneration == generation else { return }
+        activeBreakGeneration = nil
+        overlay = nil
+        let returnToPaused = returnToPausedAfterBreak
+        returnToPausedAfterBreak = false
+        switch outcome {
+        case .later:
+            if returnToPaused {
+                state = .paused
+                nextBreakDate = nil
+            } else {
+                scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
+            }
+        case .skipped, .completed:
+            if returnToPaused {
+                state = .paused
+                nextBreakDate = nil
+            } else {
+                scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
+            }
+        }
+    }
+
     // MARK: - Sleep / wake
 
     @objc private func systemWillSleep() {
-        userBecameInactive()
+        handleSystemWillSleep()
     }
 
     @objc private func systemDidWake() {
-        userBecameActive()
+        handleSystemDidWake()
+    }
+
+    func handleSystemWillSleep() {
+        handleUserBecameInactive()
+    }
+
+    func handleSystemDidWake() {
+        handleUserBecameActive()
     }
 
     @objc private func userBecameInactive() {
+        handleUserBecameInactive()
+    }
+
+    func handleUserBecameInactive() {
         guard awayBegan == nil else { return }
-        awayBegan = Date()
+        awayBegan = now()
 
         switch state {
         case .working:
@@ -231,6 +284,7 @@ final class BreakScheduler: NSObject {
         case .onBreak:
             overlay?.cancelImmediately()
             overlay = nil
+            activeBreakGeneration = nil
             let returnToPaused = returnToPausedAfterBreak
             returnToPausedAfterBreak = false
             state = returnToPaused ? .paused : .waitingForReturn
@@ -241,11 +295,15 @@ final class BreakScheduler: NSObject {
     }
 
     @objc private func userBecameActive() {
+        handleUserBecameActive()
+    }
+
+    func handleUserBecameActive() {
         guard let awayBegan else { return }
         self.awayBegan = nil
 
         guard state != .paused else { return }
-        let awayFor = Date().timeIntervalSince(awayBegan)
+        let awayFor = now().timeIntervalSince(awayBegan)
         if awayFor >= idleResetThreshold || nextBreakDate == nil {
             // A real time away from the machine — that was a break.
             scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
@@ -253,18 +311,22 @@ final class BreakScheduler: NSObject {
             // Short interruption: keep the session and its original deadline.
             state = .working
             let pending = nextBreakDate!
-            armWorkTimer(at: max(pending, Date().addingTimeInterval(5)))
+            armWorkTimer(at: max(pending, now().addingTimeInterval(5)))
         }
     }
 
     // MARK: - Settings changes
 
     @objc private func defaultsChanged() {
+        settingsDidChange()
+    }
+
+    func settingsDidChange() {
         let minutes = AppSettings.workIntervalMinutes
         guard minutes > 0, minutes != lastKnownIntervalMinutes else { return }
         lastKnownIntervalMinutes = minutes
         guard state == .working, scheduledFullInterval else { return }
         let newFireDate = sessionStart.addingTimeInterval(TimeInterval(minutes * 60))
-        armWorkTimer(at: max(newFireDate, Date().addingTimeInterval(2)))
+        armWorkTimer(at: max(newFireDate, now().addingTimeInterval(2)))
     }
 }
