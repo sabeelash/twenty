@@ -8,16 +8,24 @@ enum AppSettings {
     static let breakDurationSecondsKey = "breakDurationSeconds"
     static let snoozeMinutesKey = "snoozeMinutes"
 
+    static let workIntervalMinutesRange = 5...180
+    static let breakDurationSecondsRange = 10...60
+    static let snoozeMinutesRange = 1...30
+
+    static let defaultWorkIntervalMinutes = 20
+    static let defaultBreakDurationSeconds = 20
+    static let defaultSnoozeMinutes = 5
+
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [
-            workIntervalMinutesKey: 20,
-            breakDurationSecondsKey: 20,
-            snoozeMinutesKey: 5,
+            workIntervalMinutesKey: defaultWorkIntervalMinutes,
+            breakDurationSecondsKey: defaultBreakDurationSeconds,
+            snoozeMinutesKey: defaultSnoozeMinutes,
         ])
     }
 
     static var workIntervalMinutes: Int {
-        UserDefaults.standard.integer(forKey: workIntervalMinutesKey)
+        clampedValue(forKey: workIntervalMinutesKey, to: workIntervalMinutesRange)
     }
 
     /// Work interval in seconds. `TWENTY_WORK_SECONDS` overrides for development.
@@ -35,7 +43,15 @@ enum AppSettings {
            let seconds = Int(raw), seconds > 0 {
             return seconds
         }
-        return UserDefaults.standard.integer(forKey: breakDurationSecondsKey)
+        return persistedBreakDurationSeconds
+    }
+
+    static var persistedBreakDurationSeconds: Int {
+        clampedValue(forKey: breakDurationSecondsKey, to: breakDurationSecondsRange)
+    }
+
+    static var snoozeMinutes: Int {
+        clampedValue(forKey: snoozeMinutesKey, to: snoozeMinutesRange)
     }
 
     /// Snooze interval in seconds. `TWENTY_SNOOZE_SECONDS` overrides for development.
@@ -44,6 +60,10 @@ enum AppSettings {
            let seconds = TimeInterval(raw), seconds > 0 {
             return seconds
         }
-        return TimeInterval(UserDefaults.standard.integer(forKey: snoozeMinutesKey) * 60)
+        return TimeInterval(snoozeMinutes * 60)
+    }
+
+    private static func clampedValue(forKey key: String, to range: ClosedRange<Int>) -> Int {
+        min(max(UserDefaults.standard.integer(forKey: key), range.lowerBound), range.upperBound)
     }
 }

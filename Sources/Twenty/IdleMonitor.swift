@@ -3,20 +3,14 @@ import Foundation
 
 /// System idle time via Quartz event source state. Requires no permissions.
 enum IdleMonitor {
-    private static let inputEventTypes: [CGEventType] = [
-        .mouseMoved,
-        .leftMouseDown,
-        .rightMouseDown,
-        .otherMouseDown,
-        .scrollWheel,
-        .keyDown,
-        .flagsChanged,
-    ]
+    /// `kCGAnyInputEventType` from CGEventTypes.h, which is not exposed to
+    /// Swift. Imported C enums accept any raw value, so the init cannot fail.
+    private static let anyInputEventType = CGEventType(rawValue: UInt32.max)!
 
-    /// Seconds since the last user input event of any common kind.
+    /// Seconds since the last keyboard, mouse, or tablet input event.
     static func systemIdleSeconds() -> TimeInterval {
-        inputEventTypes
-            .map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
-            .min() ?? 0
+        CGEventSource.secondsSinceLastEventType(
+            .combinedSessionState,
+            eventType: anyInputEventType)
     }
 }
