@@ -97,9 +97,31 @@ final class BreakSchedulerTests: XCTestCase {
         let scheduler = harness.scheduler
         harness.startWorkingInterval()
 
-        scheduler.handleUserBecameInactive()
+        scheduler.handleSessionBecameInactive()
         harness.currentDate = harness.currentDate.addingTimeInterval(180)
-        scheduler.handleUserBecameActive()
+        scheduler.handleSessionBecameActive()
+
+        XCTAssertEqual(scheduler.state, .working)
+        XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(AppSettings.workInterval))
+    }
+
+    @MainActor
+    func testScreenWakeWhileLockedWaitsForSessionActivation() {
+        let harness = SchedulerHarness()
+        defer { harness.stop() }
+        let scheduler = harness.scheduler
+        harness.startWorkingInterval()
+        let pendingBreak = scheduler.nextBreakDate
+
+        scheduler.handleSessionBecameInactive()
+        harness.currentDate = harness.currentDate.addingTimeInterval(180)
+        scheduler.handleSystemDidWake()
+        scheduler.handleScreensDidWake()
+
+        XCTAssertEqual(scheduler.state, .waitingForReturn)
+        XCTAssertEqual(scheduler.nextBreakDate, pendingBreak)
+
+        scheduler.handleSessionBecameActive()
 
         XCTAssertEqual(scheduler.state, .working)
         XCTAssertEqual(scheduler.nextBreakDate, harness.currentDate.addingTimeInterval(AppSettings.workInterval))
@@ -141,7 +163,7 @@ final class BreakSchedulerTests: XCTestCase {
         scheduler.takeBreakNow()
         let breakOverlay = try XCTUnwrap(harness.overlay)
 
-        scheduler.handleUserBecameInactive()
+        scheduler.handleSessionBecameInactive()
         breakOverlay.finish(.completed)
 
         XCTAssertEqual(scheduler.state, .waitingForReturn)

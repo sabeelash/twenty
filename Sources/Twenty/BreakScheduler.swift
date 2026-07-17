@@ -34,6 +34,7 @@ final class BreakScheduler: NSObject {
     private var scheduledFullInterval = true
     private var lastKnownIntervalMinutes = 0
     private var awayBegan: Date?
+    private var sessionIsInactive = false
 
     /// Set when a manual break is started while reminders are paused, so the
     /// pause survives the break instead of silently resuming the cycle.
@@ -85,16 +86,16 @@ final class BreakScheduler: NSObject {
             self, selector: #selector(systemDidWake),
             name: NSWorkspace.didWakeNotification, object: nil)
         workspaceCenter.addObserver(
-            self, selector: #selector(userBecameInactive),
+            self, selector: #selector(sessionBecameInactive),
             name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
         workspaceCenter.addObserver(
-            self, selector: #selector(userBecameActive),
+            self, selector: #selector(sessionBecameActive),
             name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
         workspaceCenter.addObserver(
-            self, selector: #selector(userBecameInactive),
+            self, selector: #selector(screensDidSleep),
             name: NSWorkspace.screensDidSleepNotification, object: nil)
         workspaceCenter.addObserver(
-            self, selector: #selector(userBecameActive),
+            self, selector: #selector(screensDidWake),
             name: NSWorkspace.screensDidWakeNotification, object: nil)
         NotificationCenter.default.addObserver(
             self, selector: #selector(defaultsChanged),
@@ -266,14 +267,42 @@ final class BreakScheduler: NSObject {
     }
 
     func handleSystemDidWake() {
+        guard !sessionIsInactive else { return }
         handleUserBecameActive()
     }
 
-    @objc private func userBecameInactive() {
+    @objc private func sessionBecameInactive() {
+        handleSessionBecameInactive()
+    }
+
+    func handleSessionBecameInactive() {
+        sessionIsInactive = true
         handleUserBecameInactive()
     }
 
-    func handleUserBecameInactive() {
+    @objc private func sessionBecameActive() {
+        handleSessionBecameActive()
+    }
+
+    func handleSessionBecameActive() {
+        sessionIsInactive = false
+        handleUserBecameActive()
+    }
+
+    @objc private func screensDidSleep() {
+        handleUserBecameInactive()
+    }
+
+    @objc private func screensDidWake() {
+        handleScreensDidWake()
+    }
+
+    func handleScreensDidWake() {
+        guard !sessionIsInactive else { return }
+        handleUserBecameActive()
+    }
+
+    private func handleUserBecameInactive() {
         guard awayBegan == nil else { return }
         awayBegan = now()
 
@@ -295,11 +324,7 @@ final class BreakScheduler: NSObject {
         }
     }
 
-    @objc private func userBecameActive() {
-        handleUserBecameActive()
-    }
-
-    func handleUserBecameActive() {
+    private func handleUserBecameActive() {
         guard let awayBegan else { return }
         self.awayBegan = nil
 
