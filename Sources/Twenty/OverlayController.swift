@@ -18,13 +18,17 @@ final class OverlayController: NSObject {
 
     private let model: BreakCountdownModel
     private let onFinish: (Outcome) -> Void
+    private let duration: TimeInterval
     private var windows: [OverlayWindow] = []
     private var tickTimer: Timer?
+    private var deadline: Date?
     private var finished = false
     private var previouslyActiveApplication: NSRunningApplication?
 
     init(duration: Int, onFinish: @escaping (Outcome) -> Void) {
-        self.model = BreakCountdownModel(remaining: max(1, duration))
+        let duration = max(1, duration)
+        self.duration = TimeInterval(duration)
+        self.model = BreakCountdownModel(remaining: duration)
         self.onFinish = onFinish
         super.init()
     }
@@ -59,6 +63,7 @@ final class OverlayController: NSObject {
         guard !finished else { return }
         finished = true
         tickTimer?.invalidate()
+        deadline = nil
         closeWindows()
         NotificationCenter.default.removeObserver(self)
     }
@@ -66,6 +71,7 @@ final class OverlayController: NSObject {
     // MARK: - Countdown
 
     private func startCountdown() {
+        deadline = Date().addingTimeInterval(duration)
         let timer = Timer(
             timeInterval: 1,
             target: self, selector: #selector(tick),
@@ -76,9 +82,10 @@ final class OverlayController: NSObject {
     }
 
     @objc private func tick() {
-        guard !finished else { return }
-        model.remaining -= 1
-        if model.remaining <= 0 {
+        guard !finished, let deadline else { return }
+        let remaining = max(0, Int(ceil(deadline.timeIntervalSinceNow)))
+        model.remaining = remaining
+        if remaining == 0 {
             finish(.completed)
         }
     }
@@ -87,6 +94,7 @@ final class OverlayController: NSObject {
         guard !finished else { return }
         finished = true
         tickTimer?.invalidate()
+        deadline = nil
         NotificationCenter.default.removeObserver(self)
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.3

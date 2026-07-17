@@ -22,19 +22,19 @@
       "title": "Launch-at-login UI reduces a four-state API to a stale Boolean",
       "severity": "medium",
       "description": "SettingsView treats SMAppService status as enabled or disabled, ignoring requiresApproval and notFound. The value is initialized once, is not refreshed when the persistent settings window reappears, and registration errors are silently swallowed. Refresh the status when shown, represent approval-required state, provide a path to Login Items settings, and display actionable errors.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Break countdown measures timer callbacks instead of elapsed time",
       "severity": "medium",
       "description": "OverlayController subtracts one second for each timer callback. If the main run loop stalls, the configured break lasts longer than intended. Store an end deadline and derive the remaining time from the current time on every callback.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Using Later during a manual paused break silently resumes reminders",
       "severity": "medium",
       "description": "When a user starts a manual break while reminders are paused, completed and skipped outcomes preserve the pause, but Later schedules a snoozed reminder and cancels the paused state. This is surprising for a feature named Pause Reminders. Preserve the previous paused state for every manual-break outcome unless product behavior explicitly says otherwise.",
-      "fixed": false
+      "fixed": true
     },
     {
       "title": "Persisted settings are not validated or clamped",

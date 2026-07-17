@@ -190,9 +190,12 @@ final class BreakScheduler: NSObject {
             self.returnToPausedAfterBreak = false
             switch outcome {
             case .later:
-                // Asking for a break later is explicit intent — it overrides
-                // a pre-break pause.
-                self.scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
+                if returnToPaused {
+                    self.state = .paused
+                    self.nextBreakDate = nil
+                } else {
+                    self.scheduleBreak(after: AppSettings.snoozeInterval, fullInterval: false)
+                }
             case .skipped, .completed:
                 if returnToPaused {
                     self.state = .paused

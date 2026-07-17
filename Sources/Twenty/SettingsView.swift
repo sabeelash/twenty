@@ -1,15 +1,54 @@
+import AppKit
 import SwiftUI
 import ServiceManagement
+import Observation
+
+@MainActor
+@Observable
+final class LaunchAtLoginModel {
+    private(set) var status = SMAppService.mainApp.status
+    var errorMessage: String?
+
+    func refresh() {
+        status = SMAppService.mainApp.status
+    }
+
+    func refreshForDisplay() {
+        errorMessage = nil
+        refresh()
+    }
+
+    func setEnabled(_ enabled: Bool) {
+        errorMessage = nil
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            refresh()
+        } catch {
+            refresh()
+            errorMessage = "Couldn’t \(enabled ? "enable" : "disable") launch at login: \(error.localizedDescription)"
+        }
+    }
+
+    func openLoginItemsSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") else { return }
+        NSWorkspace.shared.open(url)
+    }
+}
 
 /// Flighty-style settings: a dark stack of gradient stat cards. Each setting
 /// is presented as a big stat (compact "1h 30m" style) with its control
 /// beneath it. The window forces dark appearance (see SettingsWindowController)
 /// so the card colors are explicit, not adaptive.
 struct SettingsView: View {
+    let launchAtLogin: LaunchAtLoginModel
+
     @AppStorage(AppSettings.workIntervalMinutesKey) private var workIntervalMinutes = 20
     @AppStorage(AppSettings.breakDurationSecondsKey) private var breakDurationSeconds = 20
     @AppStorage(AppSettings.snoozeMinutesKey) private var snoozeMinutes = 5
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         VStack(spacing: 12) {
@@ -95,18 +134,33 @@ struct SettingsView: View {
                 Text("Launch at login")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.white)
-                Text("Starts quietly in the menu bar")
+                Text(launchAtLoginMessage)
                     .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.5))
             }
             Spacer()
-            Toggle("", isOn: $launchAtLogin)
+            if launchAtLogin.status == .requiresApproval {
+                Button("Open Login Items") {
+                    launchAtLogin.openLoginItemsSettings()
+                }
+            } else {
+                Toggle("", isOn: Binding(
+                    get: { launchAtLogin.status == .enabled },
+                    set: { launchAtLogin.setEnabled($0) }
+                ))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .tint(Color(red: 0.20, green: 0.47, blue: 0.95))
-                .onChange(of: launchAtLogin) { _, enabled in
-                    applyLaunchAtLogin(enabled)
-                }
+                .disabled(launchAtLogin.status == .notFound)
+            }
+        }
+        .alert("Launch at login", isPresented: Binding(
+            get: { launchAtLogin.errorMessage != nil },
+            set: { if !$0 { launchAtLogin.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(launchAtLogin.errorMessage ?? "")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 14)
@@ -126,15 +180,18 @@ struct SettingsView: View {
         return "\(hours)h \(minutes)m"
     }
 
-    private func applyLaunchAtLogin(_ enabled: Bool) {
-        do {
-            if enabled {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-        } catch {
-            launchAtLogin = SMAppService.mainApp.status == .enabled
+    private var launchAtLoginMessage: String {
+        switch launchAtLogin.status {
+        case .enabled:
+            return "Starts quietly in the menu bar"
+        case .notRegistered:
+            return "Starts quietly in the menu bar"
+        case .requiresApproval:
+            return "Approve Twenty in Login Items to enable it"
+        case .notFound:
+            return "Launch at login is unavailable for this app"
+        @unknown default:
+            return "Launch at login status is unavailable"
         }
     }
 }
