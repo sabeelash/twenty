@@ -4,10 +4,12 @@ import SwiftUI
 @MainActor
 final class SettingsWindowController {
     private var window: NSWindow?
+    private let launchAtLogin = LaunchAtLoginModel()
 
     func show() {
+        launchAtLogin.refreshForDisplay()
         if window == nil {
-            let hosting = NSHostingController(rootView: SettingsView())
+            let hosting = NSHostingController(rootView: SettingsView(launchAtLogin: launchAtLogin))
             let window = NSWindow(contentViewController: hosting)
             window.styleMask = [.titled, .closable, .fullSizeContentView]
             window.title = "Settings"

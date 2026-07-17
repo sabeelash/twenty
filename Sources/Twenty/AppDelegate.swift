@@ -17,8 +17,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItemController?.showSettings()
         }
     }
-
-    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
-        true
-    }
 }

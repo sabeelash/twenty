@@ -11,7 +11,7 @@ a full-screen blurred overlay reminds you to look away from the screen for 20 se
 ## Requirements
 
 - macOS 26 (Tahoe) or later
-- Swift 6 toolchain (Xcode 26 or Command Line Tools)
+- Swift 6.2 or later toolchain (Xcode 26 or Command Line Tools)
 
 ## Build & run
 
@@ -48,10 +48,14 @@ A 1 Hz countdown timer runs only while the overlay is on screen, and a light
 
 ## Development
 
-Environment overrides for quick testing (seconds):
+Environment overrides for quick testing (all values are seconds):
 
 ```sh
-TWENTY_WORK_SECONDS=5 TWENTY_BREAK_SECONDS=5 ./build/Twenty.app/Contents/MacOS/Twenty
+TWENTY_WORK_SECONDS=5 \
+TWENTY_BREAK_SECONDS=5 \
+TWENTY_SNOOZE_SECONDS=5 \
+TWENTY_IDLE_RESET_SECONDS=5 \
+./build/Twenty.app/Contents/MacOS/Twenty
 ```
 
 ## Project layout

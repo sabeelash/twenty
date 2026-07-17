@@ -9,7 +9,7 @@ final class OverlayWindow: NSWindow {
 /// Presents the full-screen break overlay on every connected display and
 /// drives the once-per-second countdown while it is visible.
 @MainActor
-final class OverlayController: NSObject {
+final class OverlayController: NSObject, BreakOverlay {
     enum Outcome {
         case completed
         case later
@@ -18,17 +18,26 @@ final class OverlayController: NSObject {
 
     private let model: BreakCountdownModel
     private let onFinish: (Outcome) -> Void
+    private let duration: TimeInterval
     private var windows: [OverlayWindow] = []
     private var tickTimer: Timer?
+    private var deadline: Date?
     private var finished = false
+    private var previouslyActiveApplication: NSRunningApplication?
 
     init(duration: Int, onFinish: @escaping (Outcome) -> Void) {
-        self.model = BreakCountdownModel(remaining: max(1, duration))
+        let duration = max(1, duration)
+        self.duration = TimeInterval(duration)
+        self.model = BreakCountdownModel(remaining: duration)
         self.onFinish = onFinish
         super.init()
     }
 
     func present() {
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        if frontmostApplication?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            previouslyActiveApplication = frontmostApplication
+        }
         buildWindows()
         NSApp.activate(ignoringOtherApps: true)
         for window in windows {
@@ -54,6 +63,7 @@ final class OverlayController: NSObject {
         guard !finished else { return }
         finished = true
         tickTimer?.invalidate()
+        deadline = nil
         closeWindows()
         NotificationCenter.default.removeObserver(self)
     }
@@ -61,6 +71,7 @@ final class OverlayController: NSObject {
     // MARK: - Countdown
 
     private func startCountdown() {
+        deadline = Date().addingTimeInterval(duration)
         let timer = Timer(
             timeInterval: 1,
             target: self, selector: #selector(tick),
@@ -71,9 +82,10 @@ final class OverlayController: NSObject {
     }
 
     @objc private func tick() {
-        guard !finished else { return }
-        model.remaining -= 1
-        if model.remaining <= 0 {
+        guard !finished, let deadline else { return }
+        let remaining = max(0, Int(ceil(deadline.timeIntervalSinceNow)))
+        model.remaining = remaining
+        if remaining == 0 {
             finish(.completed)
         }
     }
@@ -82,6 +94,7 @@ final class OverlayController: NSObject {
         guard !finished else { return }
         finished = true
         tickTimer?.invalidate()
+        deadline = nil
         NotificationCenter.default.removeObserver(self)
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = 0.3
@@ -92,6 +105,7 @@ final class OverlayController: NSObject {
         }, completionHandler: {
             MainActor.assumeIsolated {
                 self.closeWindows()
+                self.restorePreviousApplicationFocus()
                 self.onFinish(outcome)
             }
         })
@@ -103,6 +117,12 @@ final class OverlayController: NSObject {
             window.contentView = nil
         }
         windows = []
+    }
+
+    private func restorePreviousApplicationFocus() {
+        defer { previouslyActiveApplication = nil }
+        guard let application = previouslyActiveApplication, !application.isTerminated else { return }
+        application.activate(options: [])
     }
 
     // MARK: - Windows
@@ -130,7 +150,6 @@ final class OverlayController: NSObject {
             window.backgroundColor = .clear
             window.isMovable = false
             window.hidesOnDeactivate = false
-            window.isReleasedWhenClosed = false
             window.animationBehavior = .none
             window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
 
@@ -150,7 +169,6 @@ final class OverlayController: NSObject {
             effectView.addSubview(hostingView)
 
             window.contentView = effectView
-            window.setFrame(screen.frame, display: true)
             return window
         }
     }
