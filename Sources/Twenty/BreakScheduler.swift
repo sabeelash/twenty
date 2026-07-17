@@ -24,7 +24,7 @@ final class BreakScheduler: NSObject {
     private var sessionStart = Date()
     private var scheduledFullInterval = true
     private var lastKnownIntervalMinutes = 0
-    private var sleepBegan: Date?
+    private var awayBegan: Date?
 
     /// Set when a manual break is started while reminders are paused, so the
     /// pause survives the break instead of silently resuming the cycle.
@@ -59,6 +59,18 @@ final class BreakScheduler: NSObject {
         workspaceCenter.addObserver(
             self, selector: #selector(systemDidWake),
             name: NSWorkspace.didWakeNotification, object: nil)
+        workspaceCenter.addObserver(
+            self, selector: #selector(userBecameInactive),
+            name: NSWorkspace.sessionDidResignActiveNotification, object: nil)
+        workspaceCenter.addObserver(
+            self, selector: #selector(userBecameActive),
+            name: NSWorkspace.sessionDidBecomeActiveNotification, object: nil)
+        workspaceCenter.addObserver(
+            self, selector: #selector(userBecameInactive),
+            name: NSWorkspace.screensDidSleepNotification, object: nil)
+        workspaceCenter.addObserver(
+            self, selector: #selector(userBecameActive),
+            name: NSWorkspace.screensDidWakeNotification, object: nil)
         NotificationCenter.default.addObserver(
             self, selector: #selector(defaultsChanged),
             name: UserDefaults.didChangeNotification, object: nil)
@@ -197,31 +209,49 @@ final class BreakScheduler: NSObject {
     // MARK: - Sleep / wake
 
     @objc private func systemWillSleep() {
-        sleepBegan = Date()
-        if state == .onBreak {
-            overlay?.cancelImmediately()
-            overlay = nil
-            if returnToPausedAfterBreak {
-                returnToPausedAfterBreak = false
-                state = .paused
-                nextBreakDate = nil
-            } else {
-                scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
-            }
-        }
+        userBecameInactive()
     }
 
     @objc private func systemDidWake() {
-        guard state == .working else { return }
-        let sleptFor = sleepBegan.map { Date().timeIntervalSince($0) } ?? 0
-        if sleptFor >= idleResetThreshold {
+        userBecameActive()
+    }
+
+    @objc private func userBecameInactive() {
+        guard awayBegan == nil else { return }
+        awayBegan = Date()
+
+        switch state {
+        case .working:
+            workTimer?.invalidate()
+            workTimer = nil
+            state = .waitingForReturn
+        case .onBreak:
+            overlay?.cancelImmediately()
+            overlay = nil
+            let returnToPaused = returnToPausedAfterBreak
+            returnToPausedAfterBreak = false
+            state = returnToPaused ? .paused : .waitingForReturn
+            nextBreakDate = nil
+        case .waitingForReturn, .paused:
+            break
+        }
+    }
+
+    @objc private func userBecameActive() {
+        guard let awayBegan else { return }
+        self.awayBegan = nil
+
+        guard state != .paused else { return }
+        let awayFor = Date().timeIntervalSince(awayBegan)
+        if awayFor >= idleResetThreshold || nextBreakDate == nil {
             // A real time away from the machine — that was a break.
             scheduleBreak(after: AppSettings.workInterval, fullInterval: true)
-        } else if let pending = nextBreakDate {
-            // Short nap: keep the session, re-arm at the original fire date.
+        } else {
+            // Short interruption: keep the session and its original deadline.
+            state = .working
+            let pending = nextBreakDate!
             armWorkTimer(at: max(pending, Date().addingTimeInterval(5)))
         }
-        sleepBegan = nil
     }
 
     // MARK: - Settings changes

@@ -21,6 +21,7 @@ final class OverlayController: NSObject {
     private var windows: [OverlayWindow] = []
     private var tickTimer: Timer?
     private var finished = false
+    private var previouslyActiveApplication: NSRunningApplication?
 
     init(duration: Int, onFinish: @escaping (Outcome) -> Void) {
         self.model = BreakCountdownModel(remaining: max(1, duration))
@@ -29,6 +30,10 @@ final class OverlayController: NSObject {
     }
 
     func present() {
+        let frontmostApplication = NSWorkspace.shared.frontmostApplication
+        if frontmostApplication?.processIdentifier != ProcessInfo.processInfo.processIdentifier {
+            previouslyActiveApplication = frontmostApplication
+        }
         buildWindows()
         NSApp.activate(ignoringOtherApps: true)
         for window in windows {
@@ -92,6 +97,7 @@ final class OverlayController: NSObject {
         }, completionHandler: {
             MainActor.assumeIsolated {
                 self.closeWindows()
+                self.restorePreviousApplicationFocus()
                 self.onFinish(outcome)
             }
         })
@@ -103,6 +109,12 @@ final class OverlayController: NSObject {
             window.contentView = nil
         }
         windows = []
+    }
+
+    private func restorePreviousApplicationFocus() {
+        defer { previouslyActiveApplication = nil }
+        guard let application = previouslyActiveApplication, !application.isTerminated else { return }
+        application.activate(options: [])
     }
 
     // MARK: - Windows

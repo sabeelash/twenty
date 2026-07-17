@@ -3,20 +3,10 @@ import Foundation
 
 /// System idle time via Quartz event source state. Requires no permissions.
 enum IdleMonitor {
-    private static let inputEventTypes: [CGEventType] = [
-        .mouseMoved,
-        .leftMouseDown,
-        .rightMouseDown,
-        .otherMouseDown,
-        .scrollWheel,
-        .keyDown,
-        .flagsChanged,
-    ]
-
-    /// Seconds since the last user input event of any common kind.
+    /// Seconds since the last keyboard, mouse, or tablet input event.
     static func systemIdleSeconds() -> TimeInterval {
-        inputEventTypes
-            .map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }
-            .min() ?? 0
+        CGEventSource.secondsSinceLastEventType(
+            .combinedSessionState,
+            eventType: CGEventType(rawValue: UInt32.max)!)
     }
 }
