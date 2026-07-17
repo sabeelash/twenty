@@ -43,7 +43,11 @@ enum AppSettings {
            let seconds = Int(raw), seconds > 0 {
             return seconds
         }
-        return clampedValue(forKey: breakDurationSecondsKey, to: breakDurationSecondsRange)
+        return persistedBreakDurationSeconds
+    }
+
+    static var persistedBreakDurationSeconds: Int {
+        clampedValue(forKey: breakDurationSecondsKey, to: breakDurationSecondsRange)
     }
 
     static var snoozeMinutes: Int {

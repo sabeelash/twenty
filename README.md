@@ -51,10 +51,10 @@ A 1 Hz countdown timer runs only while the overlay is on screen, and a light
 Environment overrides for quick testing (all values are seconds):
 
 ```sh
-TWENTY_WORK_SECONDS=5 \\
-TWENTY_BREAK_SECONDS=5 \\
-TWENTY_SNOOZE_SECONDS=5 \\
-TWENTY_IDLE_RESET_SECONDS=5 \\
+TWENTY_WORK_SECONDS=5 \
+TWENTY_BREAK_SECONDS=5 \
+TWENTY_SNOOZE_SECONDS=5 \
+TWENTY_IDLE_RESET_SECONDS=5 \
 ./build/Twenty.app/Contents/MacOS/Twenty
 ```
 

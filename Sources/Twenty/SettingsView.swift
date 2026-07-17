@@ -98,7 +98,7 @@ struct SettingsView: View {
         .background(Color(red: 0.07, green: 0.075, blue: 0.09))
         .onAppear {
             workIntervalMinutes = AppSettings.workIntervalMinutes
-            breakDurationSeconds = AppSettings.breakDurationSeconds
+            breakDurationSeconds = AppSettings.persistedBreakDurationSeconds
             snoozeMinutes = AppSettings.snoozeMinutes
         }
     }
