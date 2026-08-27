@@ -3,3 +3,4 @@ build/
 .swiftpm/
 .DS_Store
 CLAUDE.md
+.vscode/launch.json
